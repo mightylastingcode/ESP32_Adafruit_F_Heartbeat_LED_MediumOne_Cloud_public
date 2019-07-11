@@ -25,34 +25,9 @@
 //#define LED_BUILTIN 16
 
  /*
-  * Current Revsion Log for Adafruit Huzzad ESP32 (Michael Li)
+  * Current Revsion Log for Adafruit Huzzad ESP32 Feather (Michael Li)
+  *  IDE: Arduino IDE 1.89
   * 
-  * Tested for 
-  *   1. Adafruit Huzzah ESP32  (Red LED near the USB header)
-  *   2. SparkFun ESP32 Thing (Blue LED at the middle of the board)
-  * 
-  * 050118 : the most recent release from David Thai (M1). 
-  *     v1 : remove bmp library
-  *          copy plant care credential.
-  * 050718 : 
-  *     v1   Create a new project called ESP32demoled         
-  *          Update the credential information
-  *     v1a (050718 2:20pm)     
-  *          use built in LED light
-  *          add g_count 
-  *     v2a create one task called Wifi_task     
-  *     v2b Don't print Wifi Task unless some action is taken.
-  *     v2c add comment
-  * 050818 :    
-  *     v3a add a task to turn on/off led.
-  *     v3b print "This is LED task." and what the request is about.
-  *     v3c everything.
-  *     v3d remove the counter (the sensor loop)
-  *     v3e add_client_ip = true
-  *     v4a clean up and add document
-  *     
-  * 07072019:    
-  *     V5A change credential info.  LED on/off commands are changed.
   */
 
 /*-------------------------------------------------------------------------*
@@ -118,6 +93,7 @@ WiFiClientSecure wifiClient;
 // MQTT Connection info
 char server[] = "mqtt.mediumone.com";
 int port = 61620;
+
 
 
 char pub_topic[]="0/<Project MQTT ID>/<User MQTT>/esp32/";
@@ -299,6 +275,7 @@ void LED_Task( void * parameter ) {
 void callback(char* topic, byte* payload, unsigned int length) {
   // handle message arrived
   int i = 0;
+  uint32_t temp = 0;
   char message_buff[length + 1];
   for(i=0; i < length; i++) {
     message_buff[i] = payload[i];
@@ -308,24 +285,41 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println(F("This is WiFi Task."));
   Serial.print(F("Received some data from the MQTT broker: "));
   Serial.println(String(message_buff));
-
+  Serial.print(F("Received data len: "));
   Serial.println(strlen(message_buff));
   // Process message to turn LED on and off
   
   // L2:0 led on 
   // L2:1 led off
-  if (strlen(message_buff) == 4) 
+  if (message_buff[0] == 'L')
   {
-    if (String(message_buff[3]) == "0") { 
-      // Turn off LED
-      g_LED_request = true;
-      g_LED_state = 0;
-    } else if (String(message_buff[3]) == "1") { 
-      // Turn on LED
-      g_LED_request = true;
-      g_LED_state = 1;
-    }    
+    Serial.println(F("Request: Change RED Led state."));
+    if (strlen(message_buff) == 4) 
+    {
+      if (String(message_buff[3]) == "0") { 
+        // Turn off LED
+        g_LED_request = true;
+        g_LED_state = 0;
+      } else if (String(message_buff[3]) == "1") { 
+        // Turn on LED
+        g_LED_request = true;
+        g_LED_state = 1;
+      }    
+    }
   }
+  else if (message_buff[0] == 'S') 
+  {
+    Serial.println(F("Request: Change the sampling rate."));
+    sscanf(&message_buff[1],"%d", &temp);
+    heartbeat_period = temp * 10;  // multiply by 10 for ms clock.
+    Serial.print(F("New sampling interval time is "));
+    Serial.print(heartbeat_period);
+    Serial.println(F(" ms"));
+  } 
+  else 
+  {
+    Serial.println(F("Unknown request from the cloud app."));
+  }  
   
 }
 
